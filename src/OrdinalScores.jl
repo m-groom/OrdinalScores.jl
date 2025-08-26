@@ -3,7 +3,7 @@ module OrdinalScores
 using StatisticalMeasuresBase
 using CategoricalArrays
 using CategoricalDistributions: UnivariateFinite
-using LearnAPI
+using Distributions: pdf, support
 using ScientificTypesBase: OrderedFactor
 
 # Include measures
