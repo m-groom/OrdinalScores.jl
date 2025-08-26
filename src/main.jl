@@ -51,9 +51,11 @@ StatisticalMeasuresBase.human_name(::RPSOnScalars) = "ranked probability score"
 
 # Minimal constructor using standard wrappers: robust_measure → fussy_measure
 function RankedProbabilityScore(; normalise::Bool=true)
-    StatisticalMeasuresBase.fussy_measure(StatisticalMeasuresBase.robust_measure(StatisticalMeasuresBase.multimeasure(
-        RPSOnScalars(normalise)
-    )))
+    StatisticalMeasuresBase.fussy_measure(
+        StatisticalMeasuresBase.robust_measure(
+            StatisticalMeasuresBase.multimeasure(RPSOnScalars(normalise))
+        ),
+    )
 end
 
 # Create aliases
