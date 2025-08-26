@@ -12,7 +12,7 @@ using OrdinalScores
 # probs is a Dict(level=>prob) or Pair... form; unspecified levels get prob 0.
 function uf_from_probs(y_pool::CategoricalVector{T}, probs::AbstractDict) where {T}
     labs = levels(y_pool)  # pool labels (CategoricalValue-compatible)
-    ps   = [get(probs, ℓ, 0.0) for ℓ in labs]
+    ps = [get(probs, ℓ, 0.0) for ℓ in labs]
     UnivariateFinite(labs, ps; pool=y_pool)  # ensures pool compatibility/order
 end
 
@@ -24,7 +24,7 @@ function rps_scalar(p::UnivariateFinite, y::CategoricalValue; normalise::Bool=tr
     j = findfirst(isequal(y), labs)::Int
     s = 0.0
     cum = 0.0
-    @inbounds for k in 1:(K-1)
+    @inbounds for k in 1:(K - 1)
         cum += pdf(p, labs[k])          # F_k
         d = cum - (k < j ? 0.0 : 1.0)   # F_k - O_k (O_k = 1 for k ≥ j)
         s += d*d
@@ -39,21 +39,21 @@ end
 
 # Composite weights (observation weights ⨉ class-weights) per SMBase
 composite(y, w, cw) = StatisticalMeasuresBase.CompositeWeights(y, w, cw)
-composite(y, cw)    = StatisticalMeasuresBase.CompositeWeights(y, cw)
+composite(y, cw) = StatisticalMeasuresBase.CompositeWeights(y, cw)
 
 # -- Basic functionality ---------------------------------------------------
 
 @testset "RPS: basic single/multiple observation behavior" begin
     # Ordered 3-class pool
-    ypool = categorical(["low","med","high"]; ordered=true)
+    ypool = categorical(["low", "med", "high"]; ordered=true)
 
     # One observation
     y1 = categorical(["med"]; ordered=true, levels=levels(ypool))[1]
     p1 = uf_from_probs(ypool, Dict("low"=>0.2, "med"=>0.5, "high"=>0.3))
-    @test RPS()( [p1], [y1] ) ≈ rps_scalar(p1, y1)
+    @test RPS()([p1], [y1]) ≈ rps_scalar(p1, y1)
 
     # Multiple observations
-    y = categorical(["low","high","med","low"]; ordered=true, levels=levels(ypool))
+    y = categorical(["low", "high", "med", "low"]; ordered=true, levels=levels(ypool))
     ŷ = UnivariateFinite[
         uf_from_probs(ypool, Dict("low"=>0.7, "med"=>0.2, "high"=>0.1)),
         uf_from_probs(ypool, Dict("low"=>0.1, "med"=>0.3, "high"=>0.6)),
@@ -66,23 +66,23 @@ composite(y, cw)    = StatisticalMeasuresBase.CompositeWeights(y, cw)
 end
 
 @testset "RPS: normalization flag" begin
-    ypool = categorical(["a","b","c","d"]; ordered=true)
-    y = categorical(["a","d","c","b"]; ordered=true, levels=levels(ypool))
+    ypool = categorical(["a", "b", "c", "d"]; ordered=true)
+    y = categorical(["a", "d", "c", "b"]; ordered=true, levels=levels(ypool))
     ŷ = UnivariateFinite[
-        uf_from_probs(ypool, Dict("a"=>0.4,"b"=>0.3,"c"=>0.2,"d"=>0.1)),
-        uf_from_probs(ypool, Dict("a"=>0.1,"b"=>0.2,"c"=>0.3,"d"=>0.4)),
-        uf_from_probs(ypool, Dict("a"=>0.2,"b"=>0.2,"c"=>0.3,"d"=>0.3)),
-        uf_from_probs(ypool, Dict("a"=>0.8,"b"=>0.1,"c"=>0.05,"d"=>0.05)),
+        uf_from_probs(ypool, Dict("a"=>0.4, "b"=>0.3, "c"=>0.2, "d"=>0.1)),
+        uf_from_probs(ypool, Dict("a"=>0.1, "b"=>0.2, "c"=>0.3, "d"=>0.4)),
+        uf_from_probs(ypool, Dict("a"=>0.2, "b"=>0.2, "c"=>0.3, "d"=>0.3)),
+        uf_from_probs(ypool, Dict("a"=>0.8, "b"=>0.1, "c"=>0.05, "d"=>0.05)),
     ]
-    ms_norm   = [rps_scalar(ŷ[i], y[i]; normalise=true)  for i in eachindex(y)]
+    ms_norm = [rps_scalar(ŷ[i], y[i]; normalise=true) for i in eachindex(y)]
     ms_unnorm = [rps_scalar(ŷ[i], y[i]; normalise=false) for i in eachindex(y)]
     @test all(ms_unnorm .≈ (length(levels(ypool))-1) .* ms_norm)
     @test RPS(normalise=false)(ŷ, y) ≈ expected_aggregate(ms_unnorm)
 end
 
 @testset "RPS: degenerate perfect-forecast gives zero" begin
-    ypool = categorical(["low","med","high"]; ordered=true)
-    y = categorical(["low","med","high","high"]; ordered=true, levels=levels(ypool))
+    ypool = categorical(["low", "med", "high"]; ordered=true)
+    y = categorical(["low", "med", "high", "high"]; ordered=true, levels=levels(ypool))
     ŷ = UnivariateFinite[
         uf_from_probs(ypool, Dict("low"=>1.0)),
         uf_from_probs(ypool, Dict("med"=>1.0)),
@@ -95,12 +95,12 @@ end
 # -- Weights and class-weights --------------------------------------------
 
 @testset "RPS: observation weights only" begin
-    ypool = categorical(["low","med","high"]; ordered=true)
-    y = categorical(["low","high","med","low"]; ordered=true, levels=levels(ypool))
+    ypool = categorical(["low", "med", "high"]; ordered=true)
+    y = categorical(["low", "high", "med", "low"]; ordered=true, levels=levels(ypool))
     ŷ = UnivariateFinite[
-        uf_from_probs(ypool, Dict("low"=>0.7,"med"=>0.2,"high"=>0.1)),
-        uf_from_probs(ypool, Dict("low"=>0.1,"med"=>0.3,"high"=>0.6)),
-        uf_from_probs(ypool, Dict("low"=>0.2,"med"=>0.5,"high"=>0.3)),
+        uf_from_probs(ypool, Dict("low"=>0.7, "med"=>0.2, "high"=>0.1)),
+        uf_from_probs(ypool, Dict("low"=>0.1, "med"=>0.3, "high"=>0.6)),
+        uf_from_probs(ypool, Dict("low"=>0.2, "med"=>0.5, "high"=>0.3)),
         uf_from_probs(ypool, Dict("low"=>1.0)),
     ]
     w = [1.0, 2.0, 0.5, 0.0] # include a zero-weight example
@@ -117,14 +117,16 @@ end
 end
 
 @testset "RPS: class weights only" begin
-    ypool = categorical(["low","med","high"]; ordered=true)
-    y = categorical(["low","high","med","low","med"]; ordered=true, levels=levels(ypool))
+    ypool = categorical(["low", "med", "high"]; ordered=true)
+    y = categorical(
+        ["low", "high", "med", "low", "med"]; ordered=true, levels=levels(ypool)
+    )
     ŷ = UnivariateFinite[
-        uf_from_probs(ypool, Dict("low"=>0.6,"med"=>0.3,"high"=>0.1)),
-        uf_from_probs(ypool, Dict("low"=>0.1,"med"=>0.3,"high"=>0.6)),
-        uf_from_probs(ypool, Dict("low"=>0.2,"med"=>0.5,"high"=>0.3)),
+        uf_from_probs(ypool, Dict("low"=>0.6, "med"=>0.3, "high"=>0.1)),
+        uf_from_probs(ypool, Dict("low"=>0.1, "med"=>0.3, "high"=>0.6)),
+        uf_from_probs(ypool, Dict("low"=>0.2, "med"=>0.5, "high"=>0.3)),
         uf_from_probs(ypool, Dict("low"=>1.0)),
-        uf_from_probs(ypool, Dict("low"=>0.4,"med"=>0.4,"high"=>0.2)),
+        uf_from_probs(ypool, Dict("low"=>0.4, "med"=>0.4, "high"=>0.2)),
     ]
     cw = Dict("low"=>1.0, "med"=>2.0, "high"=>3.0) # keys must match pool exactly
     ms = [rps_scalar(ŷ[i], y[i]) for i in eachindex(y)]
@@ -133,15 +135,15 @@ end
 end
 
 @testset "RPS: observation + class weights (multiplicative)" begin
-    ypool = categorical(["low","med","high"]; ordered=true)
-    y = categorical(["low","high","med","low"]; ordered=true, levels=levels(ypool))
+    ypool = categorical(["low", "med", "high"]; ordered=true)
+    y = categorical(["low", "high", "med", "low"]; ordered=true, levels=levels(ypool))
     ŷ = UnivariateFinite[
-        uf_from_probs(ypool, Dict("low"=>0.7,"med"=>0.2,"high"=>0.1)),
-        uf_from_probs(ypool, Dict("low"=>0.1,"med"=>0.3,"high"=>0.6)),
-        uf_from_probs(ypool, Dict("low"=>0.2,"med"=>0.5,"high"=>0.3)),
+        uf_from_probs(ypool, Dict("low"=>0.7, "med"=>0.2, "high"=>0.1)),
+        uf_from_probs(ypool, Dict("low"=>0.1, "med"=>0.3, "high"=>0.6)),
+        uf_from_probs(ypool, Dict("low"=>0.2, "med"=>0.5, "high"=>0.3)),
         uf_from_probs(ypool, Dict("low"=>1.0)),
     ]
-    w  = [1.0, 2.0, 0.5, 1.0]
+    w = [1.0, 2.0, 0.5, 1.0]
     cw = Dict("low"=>1.0, "med"=>0.5, "high"=>2.0)
     ms = [rps_scalar(ŷ[i], y[i]) for i in eachindex(y)]
     expected = expected_aggregate(ms; weights=composite(y, w, cw))
@@ -155,8 +157,8 @@ end
 
 @testset "K=2: RPS == 0.5 * BrierLoss() (binary case)" begin
     # Binary ordered pool. MLJ convention: second level is the "positive" class.
-    ypool = categorical(["no","yes"]; ordered=true)
-    y = categorical(["no","yes","yes","no","no"]; ordered=true, levels=levels(ypool))
+    ypool = categorical(["no", "yes"]; ordered=true)
+    y = categorical(["no", "yes", "yes", "no", "no"]; ordered=true, levels=levels(ypool))
     ŷ = UnivariateFinite[
         uf_from_probs(ypool, Dict("no"=>0.8, "yes"=>0.2)),
         uf_from_probs(ypool, Dict("no"=>0.3, "yes"=>0.7)),
@@ -167,7 +169,7 @@ end
     # RPS aggregate:
     rps_val = RPS()(ŷ, y)
     # StatisticalMeasures' BrierLoss uses the multiclass formula even for K=2
-    bl_val  = BrierLoss()(ŷ, y)
+    bl_val = BrierLoss()(ŷ, y)
     @test rps_val ≈ 0.5 * bl_val atol=1e-12
 end
 
@@ -175,34 +177,34 @@ end
 
 @testset "Pool and order checks; unordered targets rejected" begin
     # Same labels but different order in pools → should error
-    ypool = categorical(["low","med","high"]; ordered=true)
+    ypool = categorical(["low", "med", "high"]; ordered=true)
 
-    y = categorical(["low","med"]; ordered=true, levels=reverse(levels(ypool)))
+    y = categorical(["low", "med"]; ordered=true, levels=reverse(levels(ypool)))
     ŷ = UnivariateFinite[
-        uf_from_probs(ypool, Dict("low"=>0.7,"med"=>0.2,"high"=>0.1)),
-        uf_from_probs(ypool, Dict("low"=>0.1,"med"=>0.3,"high"=>0.6)), # mismatched pool order
+        uf_from_probs(ypool, Dict("low"=>0.7, "med"=>0.2, "high"=>0.1)),
+        uf_from_probs(ypool, Dict("low"=>0.1, "med"=>0.3, "high"=>0.6)), # mismatched pool order
     ]
     @test_throws ArgumentError RPS()(ŷ, y)  # check_pools enforces pool equality with order
 
     # Unordered target should be rejected by your measure (either via method signature or extra_check)
-    y_unordered = categorical(["low","high"]; ordered=false)
-    p = uf_from_probs(y_unordered, Dict("low"=>0.6,"high"=>0.4))
+    y_unordered = categorical(["low", "high"]; ordered=false)
+    p = uf_from_probs(y_unordered, Dict("low"=>0.6, "high"=>0.4))
     # If the implementation restricts to OrderedFactor at the method level, this will
     # be a MethodError; otherwise ensure an ArgumentError is thrown by an explicit check.
     @test_throws Exception RPS()([p], [y_unordered[1]])
 end
 
 @testset "Class-weights dictionary must match pool (no missing keys)" begin
-    ypool = categorical(["a","b","c"]; ordered=true)
-    y = categorical(["a","b","c"]; ordered=true, levels=levels(ypool))
+    ypool = categorical(["a", "b", "c"]; ordered=true)
+    y = categorical(["a", "b", "c"]; ordered=true, levels=levels(ypool))
     ŷ = UnivariateFinite[
-        uf_from_probs(ypool, Dict("a"=>0.2,"b"=>0.3,"c"=>0.5)),
-        uf_from_probs(ypool, Dict("a"=>0.3,"b"=>0.4,"c"=>0.3)),
-        uf_from_probs(ypool, Dict("a"=>0.9,"b"=>0.05,"c"=>0.05)),
+        uf_from_probs(ypool, Dict("a"=>0.2, "b"=>0.3, "c"=>0.5)),
+        uf_from_probs(ypool, Dict("a"=>0.3, "b"=>0.4, "c"=>0.3)),
+        uf_from_probs(ypool, Dict("a"=>0.9, "b"=>0.05, "c"=>0.05)),
     ]
     cw = Dict("a"=>1.0, "b"=>1.0, "c"=>1.0)
     cw_missing = Dict("a"=>1.0, "b"=>1.0)      # missing "c"
-    cw_extra   = Dict("a"=>1.0, "b"=>1.0, "c"=>1.0, "d"=>2.0) # extra key
+    cw_extra = Dict("a"=>1.0, "b"=>1.0, "c"=>1.0, "d"=>2.0) # extra key
 
     @test_throws ArgumentError RPS()(ŷ, y, cw_missing)
     @test RPS()(ŷ, y, cw) ≈ RPS()(ŷ, y, cw_extra) # Extra key is ignored

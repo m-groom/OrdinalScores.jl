@@ -1,7 +1,7 @@
 # Shared helper to accumulate squared CDF differences up to K-1
 @inline function _rps(Fp, target_at, K::Int, normalise::Bool)
     s = zero(eltype(Fp))
-    @inbounds for k in 1:(K-1)
+    @inbounds for k in 1:(K - 1)
         d = Fp[k] - target_at(k)
         s += d*d
     end
@@ -46,15 +46,15 @@ end
 
 StatisticalMeasuresBase.orientation(::RPSOnScalars) = Loss()
 StatisticalMeasuresBase.external_aggregation_mode(::RPSOnScalars) = Mean()
-StatisticalMeasuresBase.observation_scitype(::RPSOnScalars) =
-    Union{Missing, OrderedFactor}
+StatisticalMeasuresBase.observation_scitype(::RPSOnScalars) = Union{Missing,OrderedFactor}
 StatisticalMeasuresBase.human_name(::RPSOnScalars) = "ranked probability score"
 
 # Minimal constructor using standard wrappers: robust_measure → fussy_measure
-RankedProbabilityScore(; normalise::Bool=true) =
-    StatisticalMeasuresBase.multimeasure(RPSOnScalars(normalise)) |>
-    StatisticalMeasuresBase.robust_measure |>
-    StatisticalMeasuresBase.fussy_measure
+function RankedProbabilityScore(; normalise::Bool=true)
+    StatisticalMeasuresBase.fussy_measure(StatisticalMeasuresBase.robust_measure(StatisticalMeasuresBase.multimeasure(
+        RPSOnScalars(normalise)
+    )))
+end
 
 # Create aliases
 const rps = RankedProbabilityScore
